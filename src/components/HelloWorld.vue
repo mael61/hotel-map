@@ -1,41 +1,105 @@
 <template>
-<div >
-  <mgl-map :accessToken="accessToken" :mapStyle="mapStyle" id="map" >
-    </mgl-map>
+
+  <div style="height: 100%; width: 100%">
+    <div>
+      <input v-model="address" placeholder="entrer une adresse">
+      <button v-on:click="search">valider</button>
+      {{locate}}
+      {{hotels}}
     </div>
+    <div class="info" style="height: 15%">
+      <span>Center: {{ center }}</span>
+
+    </div>
+    <l-map
+            style="height: 80%; width: 100%"
+            :zoom="zoom"
+            :center="center"
+            @update:zoom="zoomUpdated"
+            @update:center="centerUpdated"
+            @update:bounds="boundsUpdated"
+    >
+      <l-tile-layer :url="url"></l-tile-layer>
+      <l-marker  :lat-lng="marker" v-for=" marker in markers"></l-marker>
+    </l-map>
+  </div>
+
 </template>
 
 <script>
+    import axios from 'axios';
+    export default {
+        data() {
+            return {
+                url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+                zoom: 17,
+                center: [0, 0],
+                bounds: null,
+                locate: '',
+                address:'',
+                markers: [],
 
 
-  import Mapbox from "mapbox-gl";
-  import { MglMap  } from "vue-mapbox";
+                hotels: []
+            };
+        },
+        methods: {
+            addMarker(event) {
+                this.markers.push(event.latlng);
+            },
+            zoomUpdated(zoom) {
+                this.zoom = zoom;
+            },
+            centerUpdated(center) {
+                this.center = center;
+            },
+            boundsUpdated(bounds) {
+                this.bounds = bounds;
+            },
+            search: function () {
+                axios.get('https://api-adresse.data.gouv.fr/search/?q=' + this.address)
+                    .then(response => {
+                        this.locate = response.data.features[0].geometry
+                        this.centerUpdated([this.locate.coordinates[1],this.locate.coordinates[0]])
+                        // this.marker = [this.locate.coordinates[1],this.locate.coordinates[0]]
+                        console.log('test')
+                        this.searchHotel(this.locate.coordinates[1],this.locate.coordinates[0])
+                        // this.markers.push([this.locate.coordinates[1],this.locate.coordinates[0]])
+                    })
 
-  export default {
-    components: {
-      MglMap,
-    },
-    data () {
-      return {
-        accessToken: 'pk.eyJ1IjoibWFlbG1haWxsYXJkIiwiYSI6ImNqdzlhZHR0ejBtbmMzeXFyM29rdWQxZ3cifQ.e4591TEg8Ms_2eYjP1wmhg', // your access token. Needed if you using Mapbox maps
-        mapStyle: 'mapbox://styles/mapbox/streets-v11' // your map style
+            },
+            addHotel(hotel){
+                this.hotels.push(hotel)
+            },
 
-      };
-    },
-    created() {
-      // We need to set mapbox-gl library here in order to use it in template
-      this.mapbox = Mapbox;
-    },
+            searchHotel: function(lat,long){
 
-    mounted () {
-      axios
-              .get('https://api.coindesk.com/v1/bpi/currentprice.json')
-              .then(response => (this.info = response))
+                //5510z est le naf pour les hotels
+                axios.get('https://entreprise.data.gouv.fr/api/sirene/v1/near_point/?lat='+lat+'&long='+long+'&activite_principale=5510Z')
+                    .then(response => {
+                        this.hotels =response.data.etablissements
+                        this.hotels.forEach(function(hotel){
+                            this.markers.push([hotel.latitude,hotel.longitude])
+                        }.bind(this))
+
+                    })
+                    //
+
+
+            }
+        },
+
+
+
     }
-
-  }
 </script>
 <style>
-  body { margin:0; padding:0; }
-  #map { position:absolute; top:0; bottom:0; width:80%; }
+  #app,
+  l-map {
+    position: relative;
+    padding: 0;
+    width: 600px;
+    height: 600px;
+  }
+
 </style>

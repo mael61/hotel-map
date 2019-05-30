@@ -7,6 +7,7 @@
 
 <script>
 import HelloWorld from './components/HelloWorld.vue'
+import 'leaflet/dist/leaflet.css'
 
 export default {
   name: 'app',
