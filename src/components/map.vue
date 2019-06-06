@@ -1,24 +1,32 @@
 <template>
 
     <div class="container">
-        <div class="row">
-            <div class="col-sm">
+        <div class="row" style="height: 500px; ">
+            <div class="col-sm" >
                 <input v-model="address" placeholder="entrer une adresse">
                 <button v-on:click="search">valider</button>
                 <!--      {{ locate}}-->
                 <l-map
-                        style="height: 80%; width: 100%"
                         :zoom="zoom"
                         :center="center"
                         @update:zoom="zoomUpdated"
                         @update:center="centerUpdated"
                         @update:bounds="boundsUpdated">
                     <l-tile-layer :url="url"></l-tile-layer>
-                    <l-marker :lat-lng="marker" v-for=" marker in markers"></l-marker>
+                    <l-marker :lat-lng="[hotel.latitude,hotel.longitude]" v-for=" hotel in hotels">
+                    <l-popup>
+                        <div>
+                           <div> <strong>{{hotel.name}}</strong></div>
+                            <div>{{hotel.adresse}}</div>
+                            <hr>
+                            <div>{{hotel.distance}} km</div>
+                        </div>
+                    </l-popup>
+                    </l-marker>
                 </l-map>
             </div>
 
-        <div class="col-sm">
+        <div class="col-sm " style="height: 500px;overflow-y: scroll;" >
             <div class="card" v-for="hotel in hotels">
                 <h5 class="card-title">{{hotel.name}}</h5>
                 <p class="card-text">{{hotel.adresse}}.</p>
@@ -27,8 +35,6 @@
         </div>
         </div>
     </div>
-
-
 </template>
 
 <script>
@@ -39,19 +45,24 @@
             return {
                 url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
                 zoom: 17,
-                center: [0, 0],
+                center: [47.211978, -1.5481],
                 bounds: null,
                 locate: '',
                 address: '',
                 markers: [],
-
-
                 hotels: []
             };
         },
         methods: {
             // https://www.geodatasource.com/developers/javascript
-            distance(lat1, lon1, lat2, lon2, unit) {
+
+
+            sortHotels(array) {
+                return array.sort((a,b) => a.distance - b.distance)
+            },
+
+
+                distance(lat1, lon1, lat2, lon2, unit) {
                 if ((lat1 == lat2) && (lon1 == lon2)) {
                     return 0;
                 } else {
@@ -97,17 +108,12 @@
                         this.searchHotel(this.locate.coordinates[1], this.locate.coordinates[0])
                         // this.markers.push([this.locate.coordinates[1],this.locate.coordinates[0]])
                     })
-
             },
-
-
             searchHotel: function (lat, long) {
-
                 //5510z est le naf pour les hotels
-                axios.get('https://entreprise.data.gouv.fr/api/sirene/v1/near_point/?lat=' + lat + '&long=' + long + '&activite_principale=5510Z')
+                axios.get('https://entreprise.data.gouv.fr/api/sirene/v1/near_point/?lat=' + lat + '&long=' + long + '&activite_principale=5510Z&per_page=100')
                     .then(response => {
                         // this.hotels =response.data.etablissements
-
                         response.data.etablissements.forEach(function (OneHotel) {
                             this.markers.push([OneHotel.latitude, OneHotel.longitude])
                             var distance = this.distance(this.locate.coordinates[1], this.locate.coordinates[0], OneHotel.latitude, OneHotel.longitude, "K")
@@ -123,12 +129,10 @@
 
                             this.hotels.push(Hotel)
                         }.bind(this))
-                        this.hotels=this.hotels.sort()
+                        this.hotels = this.sortHotels(this.hotels)
                     })
                 //
-                this.hotels=this.hotels.sort(function(a, b) {
-                    return a - b
-                })
+
 
             }
         },
